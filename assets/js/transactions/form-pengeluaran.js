@@ -1,101 +1,62 @@
 $(document).ready(function() {
-    const clearForm = () => {
-        $("#description_pengeluaran").val("");
-        $("#amount_pengeluaran").val(0);
-        $("#balance").val($("#total_balance").val());
-        $("#remaining_balance").val(0);
-    }
-
     const validatePengeluranDetail = () => {
-        const caDetail = $("#pengeluaranDetail tr");
         let row = []
-        caDetail.each(function() {
-            let col = []
-            const td = $(this).find("td");
-            td.each(function() {
-                let text = $(this).text().replace("Rp. ", "")
-                col.push(text)
-            });
-            row.push(col);
-        })
+        const masters = $('.master');
+        
+        masters.each(function() {
+            const idx = $(this).attr('idx')
+            const master = $(`.master[idx=${idx}]`)[0];
+            const description = $(`.description_pengeluaran[idx=${idx}]`)[0];
+            const balance = $(`.balance[idx=${idx}]`)[0];
+            const remaining_balance = $(`.remaining_balance[idx=${idx}]`)[0];
+            const amount_pengeluaran = $(`.amount_pengeluaran[idx=${idx}]`)[0];
 
-        if(row.length > 0) {
-            return row;
-        }
-
-        swal({
-            title: "Please fill all Transaction Detail Data input",
-            text: `There is empty input field in Transaction Detail`,
-            icon: "error",
-            dangerMode: true,
+            if ($(description).val().length > 0) {
+                row.push([
+                    $(master).val() + $(description).val(),
+                    $(balance).val(),
+                    $(remaining_balance).val(),
+                    $(amount_pengeluaran).val()
+                ]);
+            }
         });
 
-        return false;
+        if (row.length < 1) {
+            swal({
+                title: "Please fill all Transaction Detail Data input",
+                text: `There is empty input field in Transaction Detail`,
+                icon: "error",
+                dangerMode: true,
+            });
+            return false;
+        }else {
+            return row;
+        }
     }
 
     const getPengeluaran= () => {
         return validatePengeluranDetail();
     }
     
-    $("#amount_pengeluaran").change(function() {
-        const balance = $("#balance").val();
-        const amount = $("#amount_pengeluaran").val();
-        const total_balance = $("#total_balance");
+    $(".amount_pengeluaran").change(function() {
+        const idx = $(this).attr('idx')
+
+        let balance = $($(`.balance[idx=${idx}]`)[0]).val();
+        let amount = $($(`.amount_pengeluaran[idx=${idx}]`)[0]).val();
+        if (parseFloat(amount) > parseFloat(balance)) {
+            $($(`.amount_pengeluaran[idx=${idx}]`)[0]).val(balance)
+            amount = balance
+        }
 
         const remaining_balance = balance - amount;
 
-        $("#remaining_balance").val(remaining_balance);
-        
-        total_balance.val(remaining_balance);
-    });
+        $($(`.remaining_balance[idx=${idx}]`)[0]).val(remaining_balance);        
+        $("#total_balance").val(remaining_balance);
 
-    $('#btnSaveRow').click(function() {
-        const description_pengeluaran = $("#description_pengeluaran").val();
-
-        const balance = $("#balance");
-        const remaining_balance = $("#remaining_balance");
-        const amount_pengeluaran = $('#amount_pengeluaran');
         const grand_total = $("#grand_total");
+        grand_total.val(parseFloat(grand_total.val()) + parseFloat(amount));
 
-        if (description_pengeluaran == "" || amount_pengeluaran.val() <= 0) {
-            swal({
-                title: "Validation",
-                text: `Please fill description and Amount`,
-                icon: "error",
-                dangerMode: true,
-            });
-        }
-        else if ($("#total_balance").val() < 0) {
-            swal({
-                title: "Validation",
-                text: `Amount cannot more than Balance`,
-                icon: "error",
-                dangerMode: true,
-            });
-        } else {
-            const new_total = (parseFloat(grand_total.val()) || 0) + (parseFloat(amount_pengeluaran.val()) || 0);
-            grand_total.val(new_total);
-        
-            const display_total = $("#display_total");
-            display_total.text('Rp. ' + new_total);
-            
-            $("#pengeluaranDetail").append(`
-                <tr>
-                    <td style='width: 25%'>${description_pengeluaran}</td>
-                    <td style='width: 25%' class='text-right'>${balance.val()}</td>
-                    <td style='width: 25%' class='text-right'>${remaining_balance.val()}</td>
-                    <td style='width: 25%' class='text-right'>${amount_pengeluaran.val()}</td>
-                </tr>
-            `);
-    
-            clearForm();
-        }
     });
-
-    $('#btnDeleteRow').click(function() {
-        clearForm();
-    });
-    
 
     $('#btnSavePengeluaran').click(function() {
         if(getPengeluaran()) {

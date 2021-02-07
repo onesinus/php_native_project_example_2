@@ -20,6 +20,8 @@
             ON t.id = td.transaction_id
             WHERE 
                 td.note != ''
+            AND
+                t.type = 'Penyaluran'
         ";
 
         if($from_date && $to_date) {

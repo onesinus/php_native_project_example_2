@@ -15,7 +15,7 @@
 
   $get_balance = "
       SELECT 
-        COALESCE(SUM(grand_total), 0) - COALESCE((SELECT SUM(amount) FROM transaction_details WHERE type = 'Uang'), 0) AS total_balance 
+        COALESCE(SUM(grand_total), 0) - COALESCE((SELECT SUM(amount) FROM transaction_details WHERE type = 'Uang' AND is_deleted = 0), 0) AS total_balance 
       FROM `muzakki` 
       WHERE 
         status = 'Closed'
@@ -68,6 +68,7 @@
     }
 </style>
 <table class='table'>
+    <input id="grand_total" class="d-none" value="0">
     <input id="total_balance" class='d-none' value="<?php echo $balance['total_balance'] ?>">
     <input id="total_makanan" class='d-none' value="<?php echo $makanan['total_makanan'] ?>">
     <input id="total_beras" class='d-none' value="<?php echo $beras['total_beras'] ?>">
@@ -215,6 +216,7 @@
 >
   <thead>
     <tr>
+      <th>Master</th>
       <th>Description</th>
       <th>Balance</th>
       <th>Remaining Balance</th>
@@ -223,30 +225,68 @@
     </tr>
   </thead>
   <tbody>
+    <?php
+        $get_master = "SELECT * FROM masters";
+    
+        $masters = $conn->query($get_master) or die(mysqli_error($conn));
+        $idx_pengeluaran = 0;
+        while($master = $masters->fetch_assoc()):
+            $master_id = $master["id"];
+            $balance_per_zis_query = "
+                SELECT 
+                    COALESCE(SUM(grand_total), 0) - COALESCE((SELECT SUM(amount) FROM transaction_details WHERE type = 'Uang' AND is_deleted = 0), 0) AS total_balance 
+                FROM `muzakki` 
+                WHERE 
+                    status = 'Closed'
+                    AND
+                    type = 'Uang'
+                    AND
+                    master_id = '$master_id'
+            ";
+
+            $execute_balance_per_zis_query = $conn->query($balance_per_zis_query);
+            $balance_per_zis = $execute_balance_per_zis_query->fetch_assoc();            
+            if ($balance_per_zis["total_balance"] < 0) {
+                $balance_per_zis["total_balance"] = 0;
+            }
+    ?>
     <tr>
+        <td>
+            <?php echo $master['description']; ?>
+            <input 
+                type="hidden" 
+                class="form-control master"
+                id='master'
+                idx="<?php echo $idx_pengeluaran; ?>"
+                value="<?php echo $master['description']; ?>"
+            />
+        </td>
         <td>
             <input 
                 type="text" 
-                class="form-control" 
+                class="form-control description_pengeluaran"
                 id='description_pengeluaran'
+                idx="<?php echo $idx_pengeluaran; ?>"
             />
         </td>
         <td>
             <input 
                 type="number" 
-                class="form-control text-right" 
+                class="form-control text-right balance" 
                 id='balance'
                 placeholder="0"
                 min="0"
-                value="<?php echo $balance['total_balance']; ?>"
+                value="<?php echo $balance_per_zis['total_balance']; ?>"
+                idx="<?php echo $idx_pengeluaran; ?>"
                 disabled
             />
         </td>
         <td>
             <input 
                 type="number" 
-                class="form-control text-right" 
+                class="form-control text-right remaining_balance"
                 id='remaining_balance'
+                idx="<?php echo $idx_pengeluaran; ?>"
                 placeholder="0"
                 min="0"
                 disabled
@@ -255,24 +295,38 @@
         <td>
             <input 
                 type="number" 
-                class="form-control text-right" 
+                class="form-control text-right amount_pengeluaran"
                 id='amount_pengeluaran'
                 placeholder="0"
+                idx="<?php echo $idx_pengeluaran; ?>"
+                max="<?php echo $balance_per_zis['total_balance']; ?>"
+                min=0
             />            
         </td>
         <td>
-            <button class='btn btn-success' id='btnSaveRow'><i class="fas fa-check-circle"></i></button>
-            <button class='btn btn-danger' id='btnDeleteRow'><i class="fas fa-trash"></i></button>
-            <button class='btn btn-primary' id='btnSavePengeluaran'><i class="fas fa-save"></i> Save Transaction</button>
+            <!-- <button class='btn btn-success' id='btnSaveRow'><i class="fas fa-check-circle"></i></button> -->
+            <!-- <button class='btn btn-danger' id='btnDeleteRow'><i class="fas fa-trash"></i></button> -->
+            <!-- <button class='btn btn-primary' id='btnSavePengeluaran'><i class="fas fa-save"></i> Save Transaction</button> -->
         </td>
     </tr>
+    <?php
+        $idx_pengeluaran++;
+        endwhile;
+    ?>
   </tbody>
+  <tfoot>
+        <tr>
+            <td colspan="5"></td>
+        </tr>
+  </tfoot>
 </table>
 <div 
     style='margin-top: -1%; overflow-y: auto; height: 230px;' 
     class='pengeluaranSection'
 >
-    <table class='table table-hover table-bordered'>
+    <button class='btn btn-primary' id='btnSavePengeluaran'><i class="fas fa-save"></i> Save Transaction</button>
+
+    <!-- <table class='table table-hover table-bordered'>
       <tbody style='cursor: pointer;' id='pengeluaranDetail'>
       </tbody>
       <tfoot>
@@ -291,7 +345,7 @@
             </td>
         </tr>
       </tfoot>
-    </table>
+    </table> -->
 </div>
 <!-- Akhir Pengeluaran -->
 <script src="assets/js/transactions/form.js"></script>
